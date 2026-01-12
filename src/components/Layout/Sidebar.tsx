@@ -4,10 +4,10 @@ const Sidebar = () => {
   const location = useLocation();
 
   const menuItems = [
-    { name: 'Transport', path: '/transport', icon: '🚚' },
-    { name: 'Vehicle', path: '/vehicle', icon: '🚗' },
-    { name: 'Material', path: '/material', icon: '📦' },
-    { name: 'Shipment', path: '/shipment', icon: '📮' },
+    { name: 'Transport', path: '/transport' },
+    { name: 'Vehicle', path: '/vehicle' },
+    { name: 'Material', path: '/material' },
+    { name: 'Shipment', path: '/shipment' },
   ];
 
   return (
@@ -26,7 +26,6 @@ const Sidebar = () => {
                       : 'text-gray-300 hover:bg-gray-800'
                   }`}
                 >
-                  <span className="text-xl">{item.icon}</span>
                   <span className="font-medium">{item.name}</span>
                 </Link>
               </li>
