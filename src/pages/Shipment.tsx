@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Table from '../components/Common/Table';
 import Slider from '../components/Common/Slider';
 import Modal from '../components/Common/Modal';
@@ -38,6 +38,11 @@ const Shipment = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [currentOrderNumber, setCurrentOrderNumber] = useState<number>(0);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadTransportType, setUploadTransportType] = useState('');
+  const [uploadVehicleType, setUploadVehicleType] = useState('');
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<CreateShipmentDTO>({
     source: [''],
@@ -363,6 +368,24 @@ const Shipment = () => {
     }));
   };
 
+  const handleFileUpload = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      await shipmentService.uploadExcel(file, {
+        transportType: uploadTransportType,
+        vehicleType: uploadVehicleType,
+      });
+      alert('Excel uploaded successfully!');
+      fetchShipments();
+      setIsUploadModalOpen(false);
+      setUploadTransportType('');
+      setUploadVehicleType('');
+    } catch (err) {
+      console.error('Error uploading Excel:', err);
+      alert('Failed to upload Excel. Please try again.');
+    }
+  };
+
   const columns = [
     { header: 'Group ID', accessor: 'groupId' as keyof ShipmentType },
     { 
@@ -381,7 +404,7 @@ const Shipment = () => {
               )}
             </span>
             {sources.length > 1 && (
-              <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 invisible group-hover:visible z-10 min-w-[200px]">
+              <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 invisible group-hover:visible z-10 min-w-50">
                 <p className="text-xs font-medium text-gray-500 mb-2">All Sources:</p>
                 {sources.map((src, idx) => (
                   <p key={idx} className="text-sm text-gray-700 py-1">
@@ -402,7 +425,7 @@ const Shipment = () => {
         return (
           <div className="group relative">
             <span>
-              {destinations[0]}
+              {destinations[destinations.length - 1]}
               {destinations.length > 1 && (
                 <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
                   +{destinations.length - 1}
@@ -410,7 +433,7 @@ const Shipment = () => {
               )}
             </span>
             {destinations.length > 1 && (
-              <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 invisible group-hover:visible z-10 min-w-[200px]">
+              <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 invisible group-hover:visible z-10 min-w-50">
                 <p className="text-xs font-medium text-gray-500 mb-2">All Destinations:</p>
                 {destinations.map((dest, idx) => (
                   <p key={idx} className="text-sm text-gray-700 py-1">
@@ -458,21 +481,36 @@ const Shipment = () => {
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Shipment</h1>
-      <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="bg-white p-6 rounded-lg shadow-md h-screen">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Active Shipments</h2>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            + Create Shipment
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Upload Excel
+            </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              + Create Shipment
+            </button>
+          </div>
         </div>
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept=".xlsx,.xls"
+          style={{ display: 'none' }}
+          onChange={(e) => handleFileUpload(e.target.files?.[0])}
+        />
         {loading && <p className="text-gray-600 text-center py-4">Loading shipments...</p>}
         {error && <p className="text-red-600 text-center py-4">{error}</p>}
         {!loading && !error && (
           <div 
-            className="cursor-pointer"
+            className="cursor-pointer h-full"
             onClick={(e) => {
               const target = e.target as HTMLElement;
               const row = target.closest('tr');
@@ -484,7 +522,7 @@ const Shipment = () => {
               }
             }}
           >
-            <Table data={shipmentData} columns={columns} className='h-75' />
+            <Table data={shipmentData} columns={columns} className='h-full' />
           </div>
         )}
       </div>
@@ -496,7 +534,6 @@ const Shipment = () => {
       >
         {selectedShipment && (
           <div className="space-y-6">
-            {/* Edit Mode Section */}
             <div className="flex justify-between items-center pb-4 border-b">
               <div className="flex items-center gap-3">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -740,7 +777,7 @@ const Shipment = () => {
                     )}
                   </p>
                   {selectedShipment.sourceDetails && selectedShipment.sourceDetails.length > 1 && (
-                    <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 invisible group-hover:visible z-10 min-w-[200px]">
+                    <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 invisible group-hover:visible z-10 min-w-50">
                       <p className="text-xs font-medium text-gray-500 mb-2">All Sources:</p>
                       {selectedShipment.sourceDetails.map((src, idx) => (
                         <p key={idx} className="text-sm text-gray-700 py-1">
@@ -755,7 +792,7 @@ const Shipment = () => {
                 <p className="text-sm text-gray-500">Destination</p>
                 <div className="group relative">
                   <p className="font-semibold">
-                    {selectedShipment.destinationDetails?.[0]?.destinationLocation || 'N/A'}
+                    {selectedShipment.destinationDetails?.[selectedShipment.destinationDetails.length - 1]?.destinationLocation || 'N/A'}
                     {selectedShipment.destinationDetails && selectedShipment.destinationDetails.length > 1 && (
                       <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
                         +{selectedShipment.destinationDetails.length - 1}
@@ -763,7 +800,7 @@ const Shipment = () => {
                     )}
                   </p>
                   {selectedShipment.destinationDetails && selectedShipment.destinationDetails.length > 1 && (
-                    <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 invisible group-hover:visible z-10 min-w-[200px]">
+                    <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 invisible group-hover:visible z-10 min-w-50">
                       <p className="text-xs font-medium text-gray-500 mb-2">All Destinations:</p>
                       {selectedShipment.destinationDetails.map((dest, idx) => (
                         <p key={idx} className="text-sm text-gray-700 py-1">
@@ -791,62 +828,129 @@ const Shipment = () => {
             {!loadingSummary && shipmentSummary && shipmentSummary.orders && shipmentSummary.orders.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Order Details</h3>
-                {shipmentSummary.orders.map((order) => (
-                  <div key={order.orderNumber} className="border border-gray-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-md mb-3 text-blue-600">
-                      Order #{order.orderNumber}
-                    </h4>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Pickups */}
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-2">Pickups</p>
-                        {order.pickups.map((pickup) => (
-                          <div key={pickup.id} className="bg-green-50 p-2 rounded mb-2">
-                            <p className="text-sm font-medium">{pickup.location}</p>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              pickup.status === 'completed' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'
-                            }`}>
-                              {pickup.status}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-2">Drops</p>
-                        {order.drops.map((drop) => (
-                          <div key={drop.id} className="bg-blue-50 p-2 rounded mb-2">
-                            <p className="text-sm font-medium">{drop.location}</p>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              drop.status === 'completed' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'
-                            }`}>
-                              {drop.status}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-2">Materials</p>
-                        {order.materials.map((material) => (
-                          <div key={material.id} className="bg-gray-50 p-2 rounded mb-2">
-                            <p className="text-sm font-medium">{material.materialName}</p>
-                            <p className="text-xs text-gray-600">Qty: {material.quantity}</p>
-                            <p className="text-xs text-gray-600">
-                              {material.weightPerUnit} kg/unit, {material.volumePerUnit} CFT/unit
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order No</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {shipmentSummary.orders.map((order) => ({
+                        source: order.pickups[0]?.location || 'N/A',
+                        destination: order.drops[0]?.location || 'N/A',
+                        orderNumber: order.orderNumber,
+                        materials: order.materials,
+                        totalQuantity: order.materials.reduce((sum, mat) => sum + mat.quantity, 0),
+                      })).map((row) => (
+                        <tr key={row.orderNumber} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">{row.source}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{row.destination}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-blue-600">{row.orderNumber}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            <div className="group relative">
+                              <span>
+                                {row.materials[0]?.materialName}
+                                {row.materials.length > 1 && (
+                                  <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                    +{row.materials.length - 1}
+                                  </span>
+                                )}
+                              </span>
+                              {row.materials.length > 1 && (
+                                <div className="absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 invisible group-hover:visible z-10 min-w-50">
+                                  <p className="text-xs font-medium text-gray-500 mb-2">All Materials:</p>
+                                  {row.materials.map((mat, idx) => (
+                                    <p key={idx} className="text-sm text-gray-700 py-1">
+                                      {mat.materialName} ({mat.quantity})
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{row.totalQuantity}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
         )}
       </Slider>
+
+      <Modal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        title="Upload Excel - Select Types"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Transport Type *
+            </label>
+            <select
+              value={uploadTransportType}
+              onChange={(e) => setUploadTransportType(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Select transport</option>
+              {transports.map((transport) => (
+                <option key={transport._id} value={transport._id}>
+                  {transport.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Vehicle Type *
+            </label>
+            <select
+              value={uploadVehicleType}
+              onChange={(e) => setUploadVehicleType(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Select vehicle</option>
+              {vehicles.map((vehicle) => (
+                <option key={vehicle._id} value={vehicle._id}>
+                  {vehicle.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              type="button"
+              onClick={() => setIsUploadModalOpen(false)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!uploadTransportType || !uploadVehicleType) {
+                  alert('Please select both transport type and vehicle type');
+                  return;
+                }
+                fileInputRef.current?.click();
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Select Excel File
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={isModalOpen}
@@ -1037,7 +1141,6 @@ const Shipment = () => {
           </div>
         </form>
       </Modal>
-      {/* implement excel upload feature here */}
     </div>
   );
 };

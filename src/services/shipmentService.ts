@@ -25,6 +25,22 @@ export const shipmentService = {
   deleteShipment: async (id: string): Promise<void> => {
     return api.delete<void>(`/shipments/${id}`);
   },
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  uploadExcel: async (file: File, additionalData?: any): Promise<any> => {
+    const formData = new FormData();
+    formData.append('xlsx', file);
+    if (additionalData) {
+      Object.keys(additionalData).forEach(key => {
+        formData.append(key, additionalData[key]);
+      });
+    }
+    return api.post('/shipments/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
 
 export default shipmentService;
